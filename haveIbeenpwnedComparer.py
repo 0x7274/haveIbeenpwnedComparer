@@ -29,9 +29,13 @@ def load_local_breaches(filepath):
         for line in file:
             parts = line.strip().split(maxsplit=1)
             if len(parts) == 2:
-                size, raw_name = parts
+                size_str, raw_name = parts
+                try:
+                    size = int(size_str)
+                except ValueError:
+                    size = 0
                 name = normalize(raw_name)
-                normalized[name] = raw_name
+                normalized[name] = {'original': raw_name, 'size': size}
     return normalized
 
 def main():
@@ -43,17 +47,23 @@ def main():
     only_in_hibp = hibp_breaches - local_normalized
     only_local = local_normalized - hibp_breaches
 
-    print(f"\n✅ {GREEN}Breaches present in both HIBP and local:{RESET}")
-    for name in sorted(in_both):
-        print(f"{GREEN}  ✓ {name}{RESET}")
+    # Sort entries by file size descending
+    in_both_sorted = sorted(in_both, key=lambda x: local_breaches[x]['size'], reverse=True)
+    only_local_sorted = sorted(only_local, key=lambda x: local_breaches[x]['size'], reverse=True)
+
+    print(f"\n✅ {GREEN}Breaches present in both HIBP and local (sorted by size):{RESET}")
+    for name in in_both_sorted:
+        entry = local_breaches[name]
+        print(f"{GREEN}  ✓ {entry['size']:,} {entry['original']}{RESET}")
 
     print(f"\n➕ {DARK_GREEN}Breaches in HIBP but missing locally:{RESET}")
     for name in sorted(only_in_hibp):
         print(f"{DARK_GREEN}  + {name}{RESET}")
 
-    print(f"\n❌ {RED}Breaches in local file but not found on HIBP:{RESET}")
-    for name in sorted(only_local):
-        print(f"{RED}  - {local_breaches[name]}{RESET}")
+    print(f"\n❌ {RED}Breaches in local file but not found on HIBP (sorted by size):{RESET}")
+    for name in only_local_sorted:
+        entry = local_breaches[name]
+        print(f"{RED}  - {entry['size']:,} {entry['original']}{RESET}")
 
     print(f"\n{BOLD}{CYAN}📊 Summary:{RESET}")
     print(f"  {GREEN}✔ In both         : {len(in_both)}{RESET}")
